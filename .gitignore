@@ -1,0 +1,20 @@
+# macOS
+.DS_Store
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependencies
+node_modules/
+
+# Build files
+/build/
+/dist/
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo 

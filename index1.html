@@ -1,0 +1,465 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Custom OSMD UI</title><meta name="description" content="A customized version of OpenSheetMusicDisplay."><meta name="author" content="OpenSheetMusicDisplay contributors"><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.3.0/semantic.min.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.3.0/semantic.css" media="all" rel="stylesheet"/><link href="https://unpkg.com/material-components-web@7.0.0/dist/material-components-web.min.css" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet"><link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons"><link href="annotations-ui.css" media="all" rel="stylesheet"/><link rel="icon" href="./favicon.ico?" type="image/x-icon"/><link rel="stylesheet" href="./demo.css"/><style>body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+        }
+        header {
+            background-color: #4285f4;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 1001; /* Higher than transport-container */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .transport-container {
+            background-color: #f8f8f8;
+            padding: 10px 30px; /* Increased horizontal padding */
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 10px;
+            position: fixed;
+            top: 56px; /* Height of the header */
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+        }
+        .playback-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .tempo-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 180px;
+        }
+        .bar-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(66, 133, 244, 0.1);
+            padding: 8px 15px;
+            border-radius: 6px;
+            font-weight: bold;
+            min-width: 80px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid rgba(66, 133, 244, 0.2);
+        }
+        .bar-display #current-bar-display {
+            color: #4285f4;
+            font-size: 1.4em;
+            text-align: center;
+        }
+        .mute-controls {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            flex: 1;
+            flex-wrap: wrap;
+        }
+        .stave-mute-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-end;
+            flex-direction: row; /* Ensure horizontal layout */
+        }
+        .stave-mute-buttons .ui.tiny.button,
+        #mute-metronome-btn {
+            position: relative; /* Ensure position is relative for all buttons */
+            width: auto; /* Allow buttons to size based on content */
+            box-sizing: border-box;
+            display: inline-flex; /* Use inline-flex to display side by side */
+            flex-grow: 0; /* Prevent buttons from growing */
+        }
+        /* Additional reset to ensure buttons catch all click events */
+        .stave-mute-buttons .ui.tiny.button *,
+        #mute-metronome-btn * {
+            pointer-events: none !important; /* Force all child elements to ignore pointer events */
+        }
+        /* Ensure button responsiveness on touch devices */
+        .stave-mute-buttons .ui.tiny.button,
+        #mute-metronome-btn {
+            -webkit-appearance: none;  /* Remove default styling */
+            -webkit-tap-highlight-color: transparent;  /* Remove tap highlight on iOS */
+            touch-action: manipulation;  /* Optimize for touch */
+            cursor: pointer;
+        }
+        /* Extra touch area for iPad */
+        @media (pointer: coarse) {
+            .stave-mute-buttons .ui.tiny.button,
+            #mute-metronome-btn {
+                position: relative;
+                /* Add pseudo-element to increase touch area without affecting layout */
+                &::before {
+                    content: '';
+                    position: absolute;
+                    top: -10px;
+                    right: -10px;
+                    bottom: -10px;
+                    left: -10px;
+                    z-index: 10;
+                    pointer-events: auto;
+                }
+            }
+        }
+        .stave-mute-buttons .ui.tiny.button {
+            margin: 3px;
+            padding: 0.7em 0.8em;
+            font-size: 0.9em;
+            min-width: 120px;
+            min-height: 45px;
+            text-align: center;
+            border-radius: 8px;
+            transition: transform 0.1s ease;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* Ensure the button doesn't change size on hover */
+        .stave-mute-buttons .ui.tiny.button:hover,
+        #mute-metronome-btn:hover {
+            transform: scale(1.03);
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
+        }
+        .stave-mute-buttons .ui.tiny.button:hover *,
+        #mute-metronome-btn:hover * {
+            /* Prevent children from changing size on hover */
+            transform: none;
+        }
+        #mute-metronome-btn {
+            min-width: 60px;
+            min-height: 45px;
+            padding: 0.7em 0.8em;
+            font-size: 0.9em;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .stave-mute-buttons .ui.tiny.button i.icon,
+        #mute-metronome-btn i.icon {
+            font-size: 1.2em;
+            margin-right: 8px;
+            pointer-events: none; /* Ensure icon doesn't interfere with button clicks */
+        }
+        .container {
+            display: flex;
+            height: calc(100vh - 56px); /* Subtract header height */
+            flex-direction: column; /* Change to column layout */
+            margin-top: 56px; /* Add margin-top to account for fixed header */
+        }
+        #main-content {
+            flex: 1;
+            overflow: auto;
+            padding: 20px;
+            position: relative;
+            width: 100%; /* Ensure it fills the width */
+            margin-top: 135px; /* Add top margin to account for the transport bar */
+            height: calc(100vh - 191px); /* Subtract header (56px) + transport (~135px) */
+        }
+        #osmdContainer {
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            position: relative;
+            z-index: 1; /* Ensure sheet music is behind the controls */
+        }
+        .control-group {
+            margin-bottom: 20px;
+        }
+        .control-group h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        .btn-group {
+            display: flex;
+            gap: 5px;
+        }
+        .settings-button-container {
+            display: flex;
+            align-items: center;
+            margin-left: 5px;
+        }
+        .playback-settings-button {
+            background-color: rgba(255, 255, 255, 0.9) !important;
+            color: #4285f4 !important;
+        }
+        .playback-settings-button:hover {
+            background-color: white !important;
+        }
+        .mdc-fab--mini {
+            width: 40px;
+            height: 40px;
+        }
+        .playback-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .ui.small.button {
+            padding: 0.5em 0.8em;
+            font-size: 0.85em;
+        }
+        .ui.tiny.button {
+            padding: 0.4em 0.6em;
+            font-size: 0.75em;
+            margin: 0.2em;
+        }
+        .progress-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            margin-top: 10px;
+            gap: 5px;
+            padding: 0 20px; /* Add horizontal padding */
+            box-sizing: border-box; /* Ensure padding is included in width */
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px; /* Increased height for better touch target */
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            overflow: visible; /* Changed to visible to allow handle to extend outside */
+            cursor: pointer;
+            position: relative;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #4285f4;
+            width: 0%;
+            border-radius: 10px 0 0 10px;
+            position: relative;
+        }
+        .progress-handle {
+            width: 28px;
+            height: 28px;
+            background-color: white;
+            border: 2px solid #4285f4;
+            border-radius: 50%;
+            position: absolute;
+            right: -14px;
+            top: 50%;
+            transform: translateY(-50%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 10;
+            touch-action: none; /* Prevents default touch actions */
+            transition: transform 0.1s ease;
+            -webkit-tap-highlight-color: transparent; /* Removes tap highlight on iOS */
+        }
+        .progress-handle.active {
+            transform: translateY(-50%) scale(1.2);
+            background-color: #e8f0fe;
+        }
+        .progress-bar.dragging {
+            height: 22px; /* Slightly larger when dragging */
+        }
+        /* Add touch-specific styles for iPad */
+        @media (pointer: coarse) {
+            .progress-bar {
+                height: 24px; /* Even larger for touch devices */
+            }
+            .progress-handle {
+                width: 36px;
+                height: 36px;
+                right: -18px;
+            }
+            .transport-container {
+                padding: 12px 20px; /* More vertical padding */
+            }
+            .ui.button {
+                padding: 0.8em 1em; /* Larger buttons for touch */
+            }
+            .ui.tiny.button {
+                padding: 0.6em 0.8em;
+            }
+            .stave-mute-buttons .ui.tiny.button {
+                padding: 0.9em 1.1em;
+                font-size: 1em;
+                min-width: 180px;
+                min-height: 60px;
+                border-radius: 8px;
+                margin: 5px;
+            }
+            .stave-mute-buttons .ui.tiny.button i.icon,
+            #mute-metronome-btn i.icon {
+                font-size: 1.4em;
+                margin-right: 10px;
+            }
+            #mute-metronome-btn {
+                min-width: 70px;
+                min-height: 60px;
+                padding: 0.9em 1.1em;
+                font-size: 1em;
+                border-radius: 8px;
+                margin: 5px;
+            }
+            /* Ensure touch feedback is visible */
+            .stave-mute-buttons .ui.tiny.button:active,
+            #mute-metronome-btn:active {
+                transform: scale(0.97);
+                opacity: 0.9;
+            }
+        }
+        .progress-time {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 8px; /* Added spacing */
+        }
+        /* Dropdown menu for sidebar content */
+        .sidebar-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .sidebar-dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f9f9f9;
+            min-width: 280px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1000;
+            padding: 20px;
+            border-radius: 4px;
+            right: 0;
+            top: calc(100% + 5px);
+            max-height: 80vh;
+            overflow-y: auto;
+            border-top: 3px solid #4285f4;
+        }
+        .sidebar-dropdown-content .control-group {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .sidebar-dropdown-content .control-group:last-child {
+            margin-bottom: 5px;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        .sidebar-dropdown-content.show {
+            display: block;
+        }
+        .sidebar-toggle-btn {
+            background-color: white !important;
+            color: #4285f4 !important;
+            transition: all 0.2s ease;
+        }
+        .sidebar-toggle-btn:hover {
+            background-color: #f0f7ff !important;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .header-right .zoom-controls .ui.button {
+            background-color: rgba(255, 255, 255, 0.9);
+            color: #4285f4;
+        }
+        .header-right .zoom-controls .ui.button:hover {
+            background-color: white;
+        }
+        .stave-controls-container {
+            position: fixed;
+            right: 70px; /* Position to the right, leaving space for the settings button */
+            bottom: 25px;
+            z-index: 100; /* Higher z-index than settings button */
+            display: flex;
+            gap: 10px;
+            flex-direction: row-reverse; /* Reverse the order so metronome is on the right */
+            flex-wrap: wrap;
+            max-width: 90%;
+            background-color: rgba(248, 248, 248, 0.95);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+            align-items: center; /* Center items vertically */
+            justify-content: flex-end; /* Align to the right end */
+        }
+        /* Responsive adjustments for smaller screens */
+        @media (max-width: 768px) {
+            .stave-controls-container {
+                max-width: 80%;
+                right: 70px;
+                padding: 5px;
+            }
+            #mute-metronome-btn {
+                font-size: 0.8em;
+                padding: 0.4em 0.6em;
+                min-width: 50px;
+                min-height: 40px;
+            }
+            .bar-display {
+                min-width: 100px;
+                padding: 6px 10px;
+                font-size: 0.9em;
+            }
+            .stave-mute-buttons .ui.tiny.button {
+                margin: 2px;
+                padding: 0.4em 0.6em;
+                font-size: 0.8em;
+                min-width: 100px;
+                min-height: 40px;
+            }
+            .progress-container {
+                padding: 0 15px;
+            }
+        }
+        /* Ensure buttons are more tap-friendly on iPad */
+        @media (pointer: coarse) {
+            .stave-controls-container {
+                padding: 18px;
+                gap: 12px;
+                bottom: 30px;
+                right: 80px;
+                max-width: 95%;
+            }
+            
+            .playback-settings-button {
+                width: auto !important;
+                height: auto !important;
+            }
+            
+            .progress-container {
+                padding: 0 25px;
+            }
+        }
+        #control-panel-container {
+            position: absolute;
+            top: 0;
+            right: 0;
+            z-index: 1050;
+            pointer-events: none;
+        }
+        
+        /* Make control panel elements inside the container receive pointer events */
+        #control-panel-container * {
+            pointer-events: auto;
+        }
+        
+        .mdc-fab--mini {
+            width: 40px;
+            height: 40px;
+        }</style><link rel="icon" href="favicon.ico"><script defer="defer" src="opensheetmusicdisplay.min.js"></script><script defer="defer" src="demo1.min.js"></script></head><body><header><h2>Custom OSMD UI</h2><div class="header-right"><div class="zoom-controls" style="display: flex; align-items: center; gap: 5px; margin-right: 15px;"><label style="color: white;">Zoom:</label><div class="btn-group"><button class="ui button" id="zoom-in-btn"><i class="search plus icon"></i></button> <button class="ui button" id="zoom-out-btn"><i class="search minus icon"></i></button></div></div><a href="score-management.html" class="ui button" style="background-color: white; color: #4285f4; margin-right: 15px;"><i class="folder open icon"></i> Manage Scores</a><div class="sidebar-dropdown"><button class="ui button sidebar-toggle-btn" id="sidebar-toggle-btn"><i class="bars icon"></i> Score & Settings</button><div class="sidebar-dropdown-content" id="sidebar-dropdown-content"><div class="control-group"><h3>Score Selection</h3><div class="score-selection" style="width: 100%;"><select class="ui selection dropdown" id="selectSample" style="width: 100%;"></select></div></div><div class="control-group"><h3>Cursor Controls</h3><div class="btn-group"><button class="ui button" id="show-cursor-btn">Show</button> <button class="ui button" id="hide-cursor-btn">Hide</button></div><div class="btn-group" style="margin-top: 5px;"><button class="ui button" id="previous-cursor-btn">Prev</button> <button class="ui button" id="next-cursor-btn">Next</button> <button class="ui button" id="reset-cursor-btn">Reset</button></div><div style="margin-top: 10px;"><div class="ui toggle checkbox"><input type="checkbox" name="public" id="follow-cursor-checkbox"> <label>Follow Cursor</label></div></div></div><div class="control-group"><h3>Page Size</h3><select class="ui selection dropdown" id="selectPageSize" style="width: 100%"><option value="endless">Endless</option><option value="A4 P">A4 Portrait</option><option value="A4 L">A4 Landscape</option><option value="Letter P">Letter Portrait</option><option value="Letter L">Letter Landscape</option></select></div><div class="control-group"><h3>Transpose</h3><div class="ui action input" style="width: 100%"><input type="number" id="transpose" value="0"/> <button class="ui button" id="transpose-btn">Apply</button></div></div></div></div><div class="settings-button-container"><button class="ui button" id="playback-settings-button" aria-label="Playback Settings"><i class="settings icon"></i></button></div></div></header><div class="transport-container"><div style="display: flex; flex-wrap: wrap; gap: 15px; width: 100%; align-items: center; margin-bottom: 10px; justify-content: space-between;"><div class="tempo-control"><label for="bpm-input">Tempo (BPM):</label><div class="ui input" style="width: 100px"><input type="number" id="bpm-input" min="40" max="240" value="100"/></div></div><div class="playback-controls"><button class="ui primary button" id="play-btn"><i class="play icon"></i> Play</button> <button class="ui button" id="pause-btn"><i class="pause icon"></i> Pause</button> <button class="ui button" id="stop-btn"><i class="stop icon"></i> Stop</button></div><div class="bar-display"><span id="current-bar-display">1</span></div><div class="mute-controls"></div></div><div class="progress-container"><div class="progress-bar" id="progress-bar"><div class="progress-fill" id="progress-fill"><div class="progress-handle" id="progress-handle"></div></div></div></div></div><div class="container"><div id="main-content"><div id="control-panel-container"></div><div id="osmdContainer"></div><div class="stave-controls-container" id="stave-controls-container"><div class="stave-mute-buttons" id="stave-mute-container"></div><button class="ui tiny button" id="mute-metronome-btn"><i class="volume up icon"></i> M</button></div></div></div><div id="error-container" style="color: red; padding: 10px;"></div></body></html>
